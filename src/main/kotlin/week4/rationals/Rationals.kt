@@ -3,39 +3,56 @@ package week4.rationals
 import java.lang.IllegalArgumentException
 import java.math.BigInteger
 
-class Rational(private val numerator: BigInteger, private val denominator: BigInteger): Comparable<Rational> {
+data class Rational(private val numerator: BigInteger, private val denominator: BigInteger) : Comparable<Rational> {
     init {
         if (0.toBigInteger() == denominator) {
             throw IllegalArgumentException()
         }
     }
 
-    private fun simplify(): Rational {
+    private fun normalize(): Rational {
         val gcd = numerator.gcd(denominator)
+        val signal = denominator.signum().toBigInteger()
 
-        return Rational(numerator.div(gcd), denominator.div(gcd))
+        // we multiply numerator for `signal` (1 or -1) to avoid negative denominators
+        val normalizedNumerator = (numerator * signal) / gcd
+        val normalizedDenominator = denominator.abs() / gcd
+
+        return Rational(normalizedNumerator, normalizedDenominator)
     }
 
     operator fun plus(other: Rational): Rational {
-        val numerator = this.numerator.multiply(other.denominator)
-        val numerator2 = other.numerator.multiply(this.denominator)
+        val numerator = this.numerator * other.denominator
+        val numerator2 = other.numerator * this.denominator
 
-        return Rational(numerator.plus(numerator2), this.denominator.times(other.denominator)).simplify()
+        return Rational(
+                numerator + numerator2,
+                this.denominator * other.denominator
+        ).normalize()
     }
 
     operator fun minus(other: Rational): Rational {
-        val numerator1 = this.numerator.multiply(other.denominator)
-        val numerator2 = other.numerator.multiply(this.denominator)
+        val numerator1 = this.numerator * other.denominator
+        val numerator2 = other.numerator * this.denominator
 
-        return Rational(numerator1.minus(numerator2), this.denominator.times(other.denominator)).simplify()
+        return Rational(
+                numerator1 - numerator2,
+                this.denominator * other.denominator
+        ).normalize()
     }
 
     operator fun times(other: Rational): Rational {
-        return Rational(this.numerator.times(other.numerator), this.denominator.times(other.denominator))
+        return Rational(
+                this.numerator * other.numerator,
+                this.denominator * other.denominator
+        )
     }
 
     operator fun div(other: Rational): Rational {
-        return Rational(this.numerator.times(other.denominator), this.denominator.times(other.numerator))
+        return Rational(
+                this.numerator * other.denominator,
+                this.denominator * other.numerator
+        )
     }
 
     operator fun unaryMinus(): Rational {
@@ -43,38 +60,41 @@ class Rational(private val numerator: BigInteger, private val denominator: BigIn
     }
 
     override operator fun compareTo(other: Rational): Int {
-        val numerator1 = this.numerator.multiply(other.denominator)
-        val numerator2 = other.numerator.multiply(this.denominator)
+        val numerator1 = this.numerator * other.denominator
+        val numerator2 = other.numerator * this.denominator
 
-        return when {
-            numerator1 > numerator2 -> 1
-            numerator1 == numerator2 -> 0
-            else -> -1
-        }
-    }
-
-    override fun equals(other: Any?): Boolean {
-        return when (other) {
-            is Rational -> {
-                this.simplify().toString() == other.simplify().toString()
-            }
-            else -> false
-        }
+        return numerator1.compareTo(numerator2)
     }
 
     override fun toString(): String {
-        val simplifiedRational = this.simplify()
-        val valuesSet = setOf(simplifiedRational.denominator, simplifiedRational.denominator)
+        val simplifiedRational = this.normalize()
 
         return when {
             1.toBigInteger() == simplifiedRational.denominator ->
                 "${simplifiedRational.numerator}"
-            valuesSet.all { it < 0.toBigInteger()} ->
-                "${simplifiedRational.numerator.negate()}/${simplifiedRational.denominator.negate()}"
-            valuesSet.any { it < 0.toBigInteger()} ->
-                "-${simplifiedRational.numerator.abs()}/${simplifiedRational.denominator.abs()}"
             else -> "${simplifiedRational.numerator}/${simplifiedRational.denominator}"
         }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Rational
+        val r1 = this.normalize()
+        val r2 = other.normalize()
+
+        if (r1.numerator != r2.numerator) return false
+        if (r1.denominator != r2.denominator) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        val normalized = this.normalize()
+        var result = normalized.numerator.hashCode()
+        result = 31 * result + normalized.denominator.hashCode()
+        return result
     }
 }
 
